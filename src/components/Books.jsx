@@ -9,7 +9,7 @@ export default function Books() {
 
   const [books, setBooks] = useState([]);
   const [filters, setFilters] = useState({ title: '', author: '' });
-  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [showDeletedOnly, setShowDeletedOnly] = useState(false);
   const [newBook, setNewBook] = useState({ title: '', author: '', quantity: 1, location: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +29,7 @@ export default function Books() {
       const params = new URLSearchParams();
       if (filters.title) params.set('title', filters.title);
       if (filters.author) params.set('author', filters.author);
-      if (isAdmin && includeDeleted) params.set('includeDeleted', 'true');
+      if (isAdmin && showDeletedOnly) params.set('includeDeleted', 'true');
       const query = params.toString();
 
       const result = await fetchWithBookFallback(`/api/books${query ? `?${query}` : ''}`, {
@@ -57,7 +57,10 @@ export default function Books() {
 
       const payload = await result.json().catch(() => []);
       const list = Array.isArray(payload) ? payload : payload?.data || [];
-      setBooks(list);
+      const normalized = showDeletedOnly
+        ? list.filter((book) => (book.status || '').toUpperCase() === 'DELETED')
+        : list;
+      setBooks(normalized);
     } catch {
       setError('Failed to load books');
       setBooks([]);
@@ -69,7 +72,7 @@ export default function Books() {
   useEffect(() => {
     fetchBooks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeDeleted]);
+  }, [showDeletedOnly]);
 
   async function onSearchSubmit(event) {
     event.preventDefault();
@@ -114,76 +117,11 @@ export default function Books() {
   }
 
   return (
-    <div className='panel'>
-      <h2>Books</h2>
-
-      <form className='form-row' onSubmit={onSearchSubmit}>
-        <input
-          type='text'
-          placeholder='Filter by title'
-          value={filters.title}
-          onChange={(e) => setFilters((prev) => ({ ...prev, title: e.target.value }))}
-        />
-        <input
-          type='text'
-          placeholder='Filter by author'
-          value={filters.author}
-          onChange={(e) => setFilters((prev) => ({ ...prev, author: e.target.value }))}
-        />
-        <button className='cta' type='submit'>Search</button>
-        {isAdmin && (
-          <label className='checkbox-line'>
-            <input
-              type='checkbox'
-              checked={includeDeleted}
-              onChange={(e) => setIncludeDeleted(e.target.checked)}
-            />
-            Show deleted
-          </label>
-        )}
-      </form>
-
-      {error && <p className='alert error'>{error}</p>}
-      {isLoading ? <p className='meta-line'>Loading...</p> : null}
-
-      <div className='table-wrap'>
-      <table className='data-table'>
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Author</th>
-            <th>Quantity</th>
-            <th>Location</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {books.map((book) => (
-            <tr key={book._id || book.id}>
-              <td>{book.title}</td>
-              <td>{book.author}</td>
-              <td>{book.quantity}</td>
-              <td>{book.location}</td>
-              <td>{book.status || 'ACTIVE'}</td>
-              <td>
-                <Link to={`/books/${book._id || book.id}`}>Detail</Link>
-              </td>
-            </tr>
-          ))}
-          {books.length === 0 && !isLoading ? (
-            <tr>
-              <td colSpan='6' className='empty-cell'>No books found</td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
-      </div>
-
+    <>
       {isAdmin && (
-        <div className='sub-panel'>
+        <div className='panel create-panel'>
           <h3>Create Book</h3>
-          <form className='form-row' onSubmit={onCreateBook}>
+          <form className='form-row create-book-row' onSubmit={onCreateBook}>
             <input
               type='text'
               placeholder='Title'
@@ -218,6 +156,79 @@ export default function Books() {
           {createError && <p className='alert error'>{createError}</p>}
         </div>
       )}
-    </div>
+
+      <div className='panel'>
+      <h2>Books</h2>
+
+      <form className='form-row' onSubmit={onSearchSubmit}>
+        <input
+          type='text'
+          placeholder='Filter by title'
+          value={filters.title}
+          onChange={(e) => setFilters((prev) => ({ ...prev, title: e.target.value }))}
+        />
+        <input
+          type='text'
+          placeholder='Filter by author'
+          value={filters.author}
+          onChange={(e) => setFilters((prev) => ({ ...prev, author: e.target.value }))}
+        />
+        <button className='cta' type='submit'>Search</button>
+        {isAdmin && (
+          <label className='checkbox-line'>
+            <input
+              type='checkbox'
+              checked={showDeletedOnly}
+              onChange={(e) => setShowDeletedOnly(e.target.checked)}
+            />
+            View deleted books only
+          </label>
+        )}
+      </form>
+
+      {error && <p className='alert error'>{error}</p>}
+      {isLoading ? <p className='meta-line'>Loading...</p> : null}
+
+      <div className='table-wrap'>
+      <table className='data-table'>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Quantity</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {books.map((book) => (
+            <tr key={book._id || book.id}>
+              <td>{book.title}</td>
+              <td>{book.author}</td>
+              <td>{book.quantity}</td>
+              <td>{book.location}</td>
+              <td>
+                <span
+                  className={`status-pill ${(book.status || 'ACTIVE').toUpperCase() === 'DELETED' ? 'deleted' : 'active'}`}
+                >
+                  {(book.status || 'ACTIVE').toUpperCase()}
+                </span>
+              </td>
+              <td>
+                <Link to={`/books/${book._id || book.id}`}>Detail</Link>
+              </td>
+            </tr>
+          ))}
+          {books.length === 0 && !isLoading ? (
+            <tr>
+              <td colSpan='6' className='empty-cell'>No books found</td>
+            </tr>
+          ) : null}
+        </tbody>
+      </table>
+      </div>
+      </div>
+    </>
   );
 }

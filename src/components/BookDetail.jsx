@@ -161,7 +161,14 @@ export function BookDetail() {
 
       {book && (
         <div>
-          <p className='meta-line'>Current Status: <strong>{book.status || 'ACTIVE'}</strong></p>
+          <p className='meta-line'>
+            Current Status:{' '}
+            <span
+              className={`status-pill ${(book.status || 'ACTIVE').toUpperCase() === 'DELETED' ? 'deleted' : 'active'}`}
+            >
+              {(book.status || 'ACTIVE').toUpperCase()}
+            </span>
+          </p>
           {isAdmin ? (
             <form className='form-row' onSubmit={onUpdate}>
               <input
