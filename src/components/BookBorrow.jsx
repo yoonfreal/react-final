@@ -198,7 +198,7 @@ export default function BookBorrow() {
             return (
               <tr key={requestId}>
                 <td>{request.userId || request.user?.email || '-'}</td>
-                <td>{matchedBook?.title || request.bookId || request.book?.title || '-'}</td>
+                <td>{request.bookTitle || matchedBook?.title || request.book?.title || request.bookId || '-'}</td>
                 <td>{request.createdAt ? new Date(request.createdAt).toLocaleString() : '-'}</td>
                 <td>{request.targetDate ? new Date(request.targetDate).toLocaleDateString() : '-'}</td>
                 <td>{request.status}</td>
